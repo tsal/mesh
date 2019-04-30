@@ -1,0 +1,25 @@
+version: v1
+consumers:
+  - id: http1
+    type: http
+    details: 
+      port: 8080
+      uri: /foo
+  - id: amqp1
+    type: amqp  
+    details:  
+      queue: A
+producers:
+  - id: kafka1
+    type: kafka
+    details:
+      url: asdada  
+      topic: B
+mesh:
+  - in: http1
+    out: 
+      - kafka1 
+  - in: ampq1  
+    out: 
+      - kafka1 
+ 

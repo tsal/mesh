@@ -1,0 +1,34 @@
+version: v1
+consumers:
+  - id: stdc1
+    type: std
+  - id: ticker1
+    type: ticker
+    filter: foo
+    details: 
+      interval: 1000
+producers:
+  - id: stdp1
+    type: std
+  - id: http1
+    type: http
+    filter: func x() { return false}
+    details:
+      url: http://github.com 
+      method: get
+  - id: http2
+    type: http
+    details:
+      url: http://golang.org  
+      method: get   
+      skipTLSVerify: true
+mesh:
+  - in: stdc1
+    out:
+      - stdp1
+  - in: ticker1
+    out: 
+      - stdp1  
+      - http1 
+      - http2 
+ 

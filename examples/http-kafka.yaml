@@ -1,0 +1,17 @@
+version: v1
+consumers:
+  - id: foo
+    type: http
+    details:
+      port: 8080
+      uri: /foo
+producers:
+  - id: bar
+    type: kafka
+    details:
+      brokers: 0.0.0.0:9092
+      topic: my_topic
+mesh:
+  - in: foo
+    out:
+      - bar

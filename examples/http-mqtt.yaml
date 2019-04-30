@@ -1,0 +1,18 @@
+version: v1
+consumers:
+  - id: foo
+    type: http
+    details:
+      port: 8080
+      uri: /foo
+producers:
+  - id: bar
+    type: mqtt
+    details:
+      url: tcp://localhost:1883
+      topic: my_topic
+      clientID: foo
+mesh:
+  - in: foo
+    out:
+      - bar

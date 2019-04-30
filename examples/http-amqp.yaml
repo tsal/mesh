@@ -1,0 +1,17 @@
+version: v1
+consumers:
+  - id: foo
+    type: http
+    details:
+      port: 8080
+      uri: /foo
+producers:
+  - id: bar
+    type: amqp
+    details:
+      url: amqp://foo:foo@localhost:5672
+      queue: my_queue
+mesh:
+  - in: foo
+    out:
+      - bar
