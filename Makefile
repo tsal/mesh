@@ -1,5 +1,7 @@
 .PHONY: build
 
+build: build_amd64
+
 build_windows:
 	GOOS=windows GOARCH=amd64 go build -o dist/win/mesh.exe
 
@@ -12,7 +14,6 @@ build_amd64:
 build_macos:
 	GOOS=darwin GOARCH=amd64 go build -o dist/macos/mesh
 
-build: build_amd64
 
 build_all: build_windows build_amd64 build_arm64 build_macos
 
