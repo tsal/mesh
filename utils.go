@@ -79,3 +79,18 @@ func (c Component) throttle() {
 		c.Limiter.Take()
 	}
 }
+
+func (c Component) accept(msg Message) (bool,error) {
+	if c.Filter == "" {
+		return true,nil
+	}
+	
+	return true,nil
+}
+
+func (c Component) process(msg Message) (Message, error) {
+	if c.Processor == "" {
+		return msg, nil
+	}
+	return msg, nil
+}

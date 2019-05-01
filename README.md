@@ -75,18 +75,6 @@ Message.Data -> Kafka Message
 
 ## Security
 
-### TODO
-
-- tests
-- timeouts
-- credentials
-- prometheus
-- retry
-- throttler
-- js
-- visualize
-- manage settings, bind yaml
-
 ## Contributing
 
 There is a lot to do. If you want to help me, you are welcome.

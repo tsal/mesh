@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/dop251/goja"
+	log "github.com/sirupsen/logrus"
 )
 
 var vmPool = sync.Pool{
@@ -12,27 +13,23 @@ var vmPool = sync.Pool{
 	},
 }
 
-func eval(id string, code string) (goja.Value, error) {
+var jsMetrics = struct {
+}{}
+
+func eval(id string, code string, msg Message) (goja.Value, error) {
 	vm := vmPool.Get().(*goja.Runtime)
 	defer vmPool.Put(vm)
-	program, err := goja.Compile("scsd", code, false)
+	vm.Set("body", string(msg.Data))
+	vm.Set("headers", msg.Headers)
+	program, err := goja.Compile(id, code, false)
 	if err != nil {
 		return nil, err
 	}
-	v, err := vm.RunProgram(program)
+	_, err = vm.RunProgram(program)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	if num := v.Export().(int64); num != 4 {
-		panic(num)
-	}
+	m := vm.Get("headers")
+	log.Warnf("%v", m.Export())
 	return nil, nil
-}
-
-func accept(msg Message) bool {
-	return true
-}
-
-func process(msg Message) (Message, error) {
-	return msg, nil
 }

@@ -29,6 +29,7 @@ type Metrics struct {
 	MsgSize  prometheus.Summary
 	ErrCnt   prometheus.Counter
 	MsgCnt   prometheus.Counter
+	JsTime   prometheus.Summary
 }
 
 func newMetrics(infix string) Metrics {
@@ -41,5 +42,6 @@ func newMetrics(infix string) Metrics {
 		BytesOut: newSummary(prefix + "bytes_out"),
 		MsgSize:  newSummary(prefix + "msg_size"),
 		ErrCnt:   newCounter(prefix + "err_count"),
-		MsgCnt:   newCounter(prefix + "msg_count")}
+		MsgCnt:   newCounter(prefix + "msg_count"),
+		JsTime:   newSummary(prefix + "js_time")}
 }

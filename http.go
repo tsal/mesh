@@ -14,6 +14,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func doCons(cons HttpConsumer) {
+	cons.Component.throttle()
+}
 // ---- Consumer
 
 type HttpConsumer struct {
@@ -55,17 +58,22 @@ func newHttpConsumer(model Model, node *CNode) (Consumer, error) {
 		port:   p,
 		uri:    uri,
 		method: method}
+
 	r.PathPrefix(uri).Methods(strings.ToUpper(method)).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		consumer.Component.throttle()
-		data, err := ioutil.ReadAll(r.Body)
-		consumer.Component.Metrics.BytesIn.Observe(float64(len(data)))
+		data, err := ioutil.ReadAll(r.Body) // 1
+		headers := map[string][]byte{}
+		for n, h := range r.Header {
+			headers[n] = []byte(h[0])
+		}
 		if err != nil {
 			log.Error(err)
 			consumer.Component.Metrics.ErrCnt.Inc()
-			http.Error(w, err.Error(), 500)
+			http.Error(w, err.Error(), 500) // 2
 		}
+		consumer.Component.Metrics.BytesIn.Observe(float64(len(data)))
 		go func() {
-			err = consumer.Node.consume(Message{Data: data})
+			err = consumer.Node.consume(Message{Data: data, Headers: headers})
 			if err != nil {
 				log.Error(err)
 				consumer.Component.Metrics.ErrCnt.Inc()
@@ -164,22 +172,36 @@ func getBasicAuth(auth string) []string {
 
 func (producer HttpProducer) produce(msg Message) error {
 	producer.Component.throttle()
-	size := float64(len(msg.Data))
-	req, err := http.NewRequest(strings.ToUpper(producer.method), producer.url, bytes.NewBuffer(msg.Data))
-	producer.Component.Metrics.BytesIn.Observe(size)
-	producer.Component.Metrics.MsgSize.Observe(size)
+	accepted, err := producer.Component.accept(msg)
 	if err != nil {
-		producer.Component.Metrics.ErrCnt.Inc()
 		return err
 	}
-	log.Debugf("http-produce: %s", producer.Component.ID)
-	resp, err := producer.client.Do(req)
-	if err != nil {
-		producer.Component.Metrics.ErrCnt.Inc()
-		return err
+	if accepted {
+		size := float64(len(msg.Data))
+		msg, err := producer.Component.process(msg)
+		if err != nil {
+			return err
+		}
+		req, err := http.NewRequest(strings.ToUpper(producer.method), producer.url, bytes.NewBuffer(msg.Data))
+		for n, v := range msg.Headers {
+			req.Header.Set(n, string(v))
+		}
+		producer.Component.Metrics.BytesIn.Observe(size)
+		producer.Component.Metrics.MsgSize.Observe(size)
+		if err != nil {
+			producer.Component.Metrics.ErrCnt.Inc()
+			return err
+		}
+		log.Debugf("http-produce: %s", producer.Component.ID)
+		resp, err := producer.client.Do(req)
+		if err != nil {
+			producer.Component.Metrics.ErrCnt.Inc()
+			return err
+		}
+		producer.Component.Metrics.BytesOut.Observe(size)
+		defer resp.Body.Close()
+		return nil
 	}
-	producer.Component.Metrics.BytesOut.Observe(size)
-	defer resp.Body.Close()
 	return nil
 }
 

@@ -26,9 +26,11 @@ type Service interface {
 }
 
 type Component struct {
-	ID      string
-	Limiter ratelimit.Limiter
-	Timeout int
+	ID        string
+	Limiter   ratelimit.Limiter
+	Timeout   int
+	Filter    string
+	Processor string
 	Metrics
 }
 
