@@ -1,15 +1,17 @@
 ![](/Users/przemek/Downloads/connection-icon-19.jpg)
 
-# Mesh
+# Mesh: Meta Broker
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
+
+## What is it?
 
 * EventMesh
 * Trans-protocol converter
 * Inter-protol bridge/proxy
 * Meta Broker
 
-## Features:
+## Features
 
 * async only
 * lightweight, fast
@@ -20,7 +22,7 @@
 * Linux/Mac/Windows (single executable)
 * Docker
 
-## Protocols:
+## Protocols
 
 - HTTP
 - Kafka
@@ -77,4 +79,4 @@ Message.Data -> Kafka Message
 
 ## Contributing
 
-There is a lot to do. If you want to help me, you are welcome.
+There is a whole lot to do. If you want to help me, you are welcome.

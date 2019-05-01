@@ -1,8 +1,11 @@
 package main
 
 import (
+	"crypto/rand"
 	"fmt"
+	"io"
 	"reflect"
+	"time"
 
 	"go.uber.org/ratelimit"
 
@@ -80,12 +83,12 @@ func (c Component) throttle() {
 	}
 }
 
-func (c Component) accept(msg Message) (bool,error) {
+func (c Component) accept(msg Message) (bool, error) {
 	if c.Filter == "" {
-		return true,nil
+		return true, nil
 	}
-	
-	return true,nil
+
+	return true, nil
 }
 
 func (c Component) process(msg Message) (Message, error) {
@@ -93,4 +96,23 @@ func (c Component) process(msg Message) (Message, error) {
 		return msg, nil
 	}
 	return msg, nil
+}
+
+// now in millis
+func Now() int64 {
+	return time.Now().UnixNano() / 1e6
+}
+
+// NewUUID generates a random UUID according to RFC 4122
+func NewUUID() string {
+	uuid := make([]byte, 16)
+	n, err := io.ReadFull(rand.Reader, uuid)
+	if n != len(uuid) || err != nil {
+		return ""
+	}
+	// variant bits; see section 4.1.1
+	uuid[8] = uuid[8]&^0xc0 | 0x80
+	// version 4 (pseudo-random); see section 4.1.3
+	uuid[6] = uuid[6]&^0xf0 | 0x40
+	return fmt.Sprintf("%x-%x-%x-%x-%x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:])
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -134,9 +135,11 @@ type Node struct {
 }
 
 type Mesh struct {
+	ID        string
 	PNodeIdx  map[string]*PNode
 	Consumers []CNode
 	server    *http.Server
+	StartedAt int64
 }
 
 func newCNode(m Model) (*CNode, error) {
@@ -288,8 +291,23 @@ func newMesh(file string) (*Mesh, error) {
 	log.Debugf("model: %v", model)
 	r := mux.NewRouter()
 	server := &http.Server{Addr: ":" + "80", Handler: r}
-	mesh := &Mesh{PNodeIdx: make(map[string]*PNode), server: server}
+	mesh := &Mesh{
+		ID:        NewUUID(),
+		StartedAt: Now(),
+		PNodeIdx:  make(map[string]*PNode),
+		server:    server}
 	r.PathPrefix("/metrics").Methods("GET").Handler(promhttp.Handler())
+	r.PathPrefix("/status").Methods("GET").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		status := map[string]interface{}{}
+		status["ID"] = mesh.ID
+		status["uptime"] = Now() - mesh.StartedAt
+		status["diag"] = fmt.Sprintf("%v", mesh)
+		b, err := json.Marshal(status)
+		if err != nil {
+			log.Error(err)
+		}
+		w.Write(b)
+	})
 	r.PathPrefix("/").Methods("GET").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		dashboard(w, r)
 	})
