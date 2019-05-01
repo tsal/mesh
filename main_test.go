@@ -11,6 +11,9 @@ func TestMesh(t *testing.T) {
 	if err != nil {
 		log.Error(err)
 	}
-	mesh.start()
+	err = mesh.start()
+	if err != nil {
+		t.Fatal(err)
+	}
 	mesh.stop()
 }

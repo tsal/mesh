@@ -76,12 +76,18 @@ func (cnode CNode) consume(msg Message) error {
 	return nil
 }
 
-func (mesh Mesh) start() {
+func (mesh Mesh) start() error {
 	for _, pnode := range mesh.PNodeIdx {
-		pnode.producer.start()
+		err := pnode.producer.start()
+		if err != nil {
+			return err
+		}
 	}
 	for _, cnode := range mesh.Consumers {
-		cnode.consumer.start()
+		err := cnode.consumer.start()
+		if err != nil {
+			return err
+		}
 	}
 	go func() {
 		log.Info("mesh web console at 80")
@@ -91,6 +97,7 @@ func (mesh Mesh) start() {
 			}
 		}
 	}()
+	return nil
 }
 
 func (mesh Mesh) stop() {
