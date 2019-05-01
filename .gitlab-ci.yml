@@ -1,15 +1,11 @@
 image: golang:1.12
 
-stages:
-  - test
-  - build
-
-unit_tests:
-  stage: test
-  script:
-    - go test
-
 build:
   stage: build
   script:
-    - make  
+    - make build
+
+test:
+  stage: test
+  script:
+    - go test
