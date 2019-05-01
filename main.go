@@ -13,7 +13,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
-	"go.uber.org/ratelimit"
 	"gopkg.in/yaml.v2"
 )
 
@@ -22,18 +21,17 @@ type Message struct {
 	Headers map[string][]byte
 }
 
+func (msg Message) Size() int {
+	size := 0
+	for _, v := range msg.Headers {
+		size += len(v)
+	}
+	return size + len(msg.Data)
+}
+
 type Service interface {
 	start() error
 	stop()
-}
-
-type Component struct {
-	ID        string
-	Limiter   ratelimit.Limiter
-	Timeout   int
-	Filter    string
-	Processor string
-	Metrics
 }
 
 type Consumer interface {

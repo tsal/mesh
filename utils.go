@@ -76,28 +76,6 @@ func defaultIfZero(x int, deflt int) int {
 	return x
 }
 
-// Throttles by waiting if needed only if Limiter is set
-func (c Component) throttle() {
-	if c.Limiter != nil {
-		c.Limiter.Take()
-	}
-}
-
-func (c Component) accept(msg Message) (bool, error) {
-	if c.Filter == "" {
-		return true, nil
-	}
-
-	return true, nil
-}
-
-func (c Component) process(msg Message) (Message, error) {
-	if c.Processor == "" {
-		return msg, nil
-	}
-	return msg, nil
-}
-
 // now in millis
 func Now() int64 {
 	return time.Now().UnixNano() / 1e6

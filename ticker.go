@@ -7,6 +7,7 @@ import (
 )
 
 type TickerConsumer struct {
+	Component
 	Node     *CNode
 	ticker   *time.Ticker
 	interval int
