@@ -5,7 +5,7 @@ go:
   - master
 
 before_install:
-  - go get -v golang.org/x/lint/golint
+  - go get
 
 script:
   - make build  
