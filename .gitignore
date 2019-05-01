@@ -13,3 +13,4 @@
 .DS_Store
 *.xml
 *.iml
+dist
