@@ -28,12 +28,10 @@ func newAmqpConsumer(model Model, node *CNode) (Consumer, error) {
 		return nil, err
 	}
 	consumer := &AmqpConsumer{
-		Component: Component{
-			ID:      model.ID,
-			Metrics: newMetrics(model.ID)},
-		client: client,
-		queue:  queue,
-		Node:   node}
+		Component: newComponent(model),
+		client:    client,
+		queue:     queue,
+		Node:      node}
 	return consumer, nil
 }
 
@@ -112,12 +110,10 @@ func newAmqpProducer(model Model) (Producer, error) {
 		return nil, err
 	}
 	return AmqpProducer{
-		Component: Component{
-			ID:      model.ID,
-			Metrics: newMetrics(model.ID)},
-		client: client,
-		url:    url,
-		queue:  queue}, nil
+		Component: newComponent(model),
+		client:    client,
+		url:       url,
+		queue:     queue}, nil
 }
 
 func (producer AmqpProducer) produce(msg Message) error {

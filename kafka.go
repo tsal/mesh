@@ -29,11 +29,9 @@ func newKafkaConsumer(model Model, node *CNode) (Consumer, error) {
 		MaxBytes:  10e6, // 10MB
 	})
 	consumer := &KafkaConsumer{
-		Component: Component{
-			ID:      model.ID,
-			Metrics: newMetrics(model.ID)},
-		reader: r,
-		Node:   node}
+		Component: newComponent(model),
+		reader:    r,
+		Node:      node}
 	return consumer, nil
 }
 
@@ -90,9 +88,8 @@ func newKafkaProducer(model Model) (Producer, error) {
 	})
 
 	return KafkaProducer{
-		Component: Component{ID: model.ID,
-			Metrics: newMetrics(model.ID)},
-		writer: w}, nil
+		Component: newComponent(model),
+		writer:    w}, nil
 }
 
 const (

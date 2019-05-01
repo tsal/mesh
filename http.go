@@ -38,38 +38,32 @@ func newHttpConsumer(model Model, node *CNode) (Consumer, error) {
 	if err != nil {
 		return nil, err
 	}
-	rate, err := getInt(model, "rate", 0)
-	if err != nil {
-		return nil, err
-	}
 	r := mux.NewRouter()
 	p := fmt.Sprintf("%d", port)
 	server := &http.Server{Addr: ":" + p, Handler: r}
 	consumer := &HttpConsumer{
-		Component: Component{
-			ID:      model.ID,
-			Limiter: newLimiter(rate),
-			Metrics: newMetrics(model.ID)},
-		server: server,
-		Node:   node,
-		port:   p,
-		uri:    uri,
-		method: method}
+		Component: newComponent(model),
+		server:    server,
+		Node:      node,
+		port:      p,
+		uri:       uri,
+		method:    method}
 
 	r.PathPrefix(uri).Methods(strings.ToUpper(method)).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		consumer.Component.doConsume(node, func() (Message, error) {
-			data, err := ioutil.ReadAll(r.Body)
-			if err != nil {
-				return Message{}, err
-			}
-			headers := map[string][]byte{}
-			for n, h := range r.Header {
-				headers[n] = []byte(h[0])
-			}
-			return Message{Data: data, Headers: headers}, nil
-		}, func(err error) {
-			http.Error(w, err.Error(), 500)
-		})
+		consumer.Component.doConsume(node,
+			func() (Message, error) {
+				data, err := ioutil.ReadAll(r.Body)
+				if err != nil {
+					return Message{}, err
+				}
+				headers := map[string][]byte{}
+				for n, h := range r.Header {
+					headers[n] = []byte(h[0])
+				}
+				return Message{Data: data, Headers: headers}, nil
+			}, func(err error) {
+				http.Error(w, err.Error(), 500)
+			})
 	})
 	return consumer, nil
 }
@@ -138,10 +132,7 @@ func newHttpProducer(model Model) (Producer, error) {
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: skipVerify},
 	}
 	return HttpProducer{
-		Component: Component{
-			ID:      model.ID,
-			Limiter: newLimiter(model.Rate),
-			Metrics: newMetrics(model.ID)},
+		Component: newComponent(model),
 		client: &http.Client{
 			Timeout:   time.Duration(defaultIfZero(model.Timeout, 10000)) * time.Millisecond,
 			Transport: tr},

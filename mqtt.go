@@ -42,11 +42,9 @@ func newMqttConsumer(model Model, node *CNode) (Consumer, error) {
 		return nil, err
 	}
 	consumer := &MqttConsumer{
-		Component: Component{
-			ID:      model.ID,
-			Metrics: newMetrics(model.ID)},
-		client: client,
-		Node:   node}
+		Component: newComponent(model),
+		client:    client,
+		Node:      node}
 	return consumer, nil
 }
 
@@ -87,10 +85,8 @@ func newMqttProducer(model Model) (Producer, error) {
 		return nil, err
 	}
 	return MqttProducer{
-		Component: Component{
-			ID:      model.ID,
-			Metrics: newMetrics(model.ID)},
-		client: client}, nil
+		Component: newComponent(model),
+		client:    client}, nil
 }
 
 func (producer MqttProducer) produce(msg Message) error {

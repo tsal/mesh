@@ -14,6 +14,16 @@ type Component struct {
 	Metrics
 }
 
+func newComponent(model Model) Component {
+	return Component{
+		ID:        model.ID,
+		Limiter:   newLimiter(model.Rate),
+		Timeout:   model.Timeout,
+		Filter:    model.Filter,
+		Processor: model.Processor,
+		Metrics:   newMetrics(model.ID)}
+}
+
 // Throttles by waiting if needed only if Limiter is set
 func (c Component) throttle() {
 	if c.Limiter != nil {
@@ -26,7 +36,6 @@ func (c Component) accept(msg Message) (bool, error) {
 	if c.Filter == "" {
 		return true, nil
 	}
-
 	return true, nil
 }
 
