@@ -9,6 +9,7 @@ import (
 	"os/signal"
 
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"go.uber.org/ratelimit"
@@ -82,12 +83,14 @@ func (mesh Mesh) start() {
 	for _, cnode := range mesh.Consumers {
 		cnode.consumer.start()
 	}
-	log.Info("mesh web console at 80")
-	if err := mesh.server.ListenAndServe(); err != nil {
-		if err.Error() != "http: Server closed" {
-			log.Error(err)
+	go func() {
+		log.Info("mesh web console at 80")
+		if err := mesh.server.ListenAndServe(); err != nil {
+			if err.Error() != "http: Server closed" {
+				log.Error(err)
+			}
 		}
-	}
+	}()
 }
 
 func (mesh Mesh) stop() {
@@ -265,7 +268,17 @@ func findPNode(id string, mesh *Mesh) (*PNode, bool) {
 	return nil, false
 }
 
-func newMesh(model MeshModel) (*Mesh, error) {
+func newMesh(file string) (*Mesh, error) {
+	b, err := ioutil.ReadFile(file)
+	if err != nil {
+		return nil, errors.Wrap(err, "mesh load")
+	}
+	model := MeshModel{}
+	err = yaml.Unmarshal([]byte(b), &model)
+	if err != nil {
+		return nil, errors.Wrap(err, "mesh unmarshal")
+	}
+	log.Debugf("model: %v", model)
 	r := mux.NewRouter()
 	server := &http.Server{Addr: ":" + "80", Handler: r}
 	mesh := &Mesh{PNodeIdx: make(map[string]*PNode), server: server}
@@ -317,17 +330,8 @@ func main() {
 	}
 	file := os.Args[1]
 	log.Infof("using mesh file: %s", file)
-	b, err := ioutil.ReadFile(file)
-	if err != nil {
-		log.Fatal(err)
-	}
-	model := MeshModel{}
-	err = yaml.Unmarshal([]byte(b), &model)
-	if err != nil {
-		log.Error(err)
-	}
-	log.Debugf("%v", model)
-	mesh, err := newMesh(model)
+
+	mesh, err := newMesh(file)
 	if err != nil {
 		log.Fatal(err)
 	}

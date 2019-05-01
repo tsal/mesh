@@ -22,4 +22,4 @@ clean:
 docker:	build
 	docker build -t mesh .	
 
- 
+ # go run `ls *.go | grep -Fv "_test"`
