@@ -43,7 +43,7 @@ func (consumer WsConsumer) start() error {
 		log.Debug("amqp-consumer-start")
 		session, err := consumer.client.NewSession()
 		if err != nil {
-			log.Error("Creating AMQP session:", err)
+			log.Error("creating AMQP session:", err)
 		}
 
 		receiver, err := session.NewReceiver(
@@ -51,14 +51,14 @@ func (consumer WsConsumer) start() error {
 			amqp.LinkCredit(10),
 		)
 		if err != nil {
-			log.Fatal("Creating receiver link:", err)
+			log.Fatal("creating receiver link:", err)
 		}
 
 		for {
 			// Receive next message
 			msg, err := receiver.Receive(context.Background())
 			if err != nil {
-				log.Fatal("Reading message from AMQP:", err)
+				log.Fatal("reading message from AMQP:", err)
 			}
 
 			// Accept message
@@ -123,14 +123,14 @@ func (producer WsProducer) produce(msg Message) error {
 	log.Debug("amqp-produce", producer)
 	session, err := producer.client.NewSession()
 	if err != nil {
-		return fmt.Errorf("Creating AMQP session: %v", err)
+		return fmt.Errorf("creating AMQP session: %v", err)
 	}
 	defer session.Close(context.Background())
 	sender, err := session.NewSender(
 		amqp.LinkTargetAddress(producer.queue),
 	)
 	if err != nil {
-		return fmt.Errorf("Creating sender link: %v", err)
+		return fmt.Errorf("creating sender link: %v", err)
 	}
 	defer sender.Close(context.Background())
 	//ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -138,7 +138,7 @@ func (producer WsProducer) produce(msg Message) error {
 	// Send message
 	err = sender.Send(context.Background(), amqp.NewMessage(msg.Data))
 	if err != nil {
-		return fmt.Errorf("Sending message: %v", err)
+		return fmt.Errorf("sending message: %v", err)
 	}
 
 	return nil

@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	kafka "github.com/segmentio/kafka-go"
+	"github.com/segmentio/kafka-go"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -39,14 +39,21 @@ func (consumer KafkaConsumer) start() error {
 	go func() {
 		log.Debug("kafka-consumer-start")
 		for {
-			m, err := consumer.reader.ReadMessage(context.Background())
-			if err != nil {
-				break
-			}
-			err = consumer.Node.consume(Message{Data: m.Value}) //TODO: key!
-			if err != nil {
-				log.Error(err)
-			}
+			consumer.Component.doConsume(consumer.Node,
+				func() (Message, error) {
+					msg, err := consumer.reader.ReadMessage(context.Background())
+					if err != nil {
+						return Message{}, err
+					}
+					headers := map[string][]byte{}
+					headers[kafkaKey] = msg.Key
+					for _, h := range msg.Headers {
+						headers[h.Key] = h.Value
+					}
+					return Message{Data: msg.Value, Headers: headers}, nil
+				},
+				func(err error) {
+				})
 		}
 	}()
 	return nil
@@ -93,24 +100,28 @@ func newKafkaProducer(model Model) (Producer, error) {
 }
 
 const (
-	KEY = "kafka_key"
+	kafkaKey = "kafka_key"
 )
 
 func newKafkaMessage(msg Message) kafka.Message {
-	if key := msg.Headers[KEY]; key != nil {
-		return kafka.Message{
-			Key:   key,
-			Value: msg.Data,
-		}
+	m := kafka.Message{Value: msg.Data}
+	if key := msg.Headers[kafkaKey]; key != nil {
+		m.Key = key
 	}
-	return kafka.Message{
-		Value: msg.Data,
+	for k, v := range msg.Headers {
+		m.Headers = append(m.Headers, kafka.Header{Key: k, Value: v})
 	}
+	return m
 }
 
-func (producer KafkaProducer) produce(msg Message) error {
-	log.Debug("kafka-produce")
-	return producer.writer.WriteMessages(context.Background(), newKafkaMessage(msg))
+func (producer KafkaProducer) produce(inMsg Message) error {
+	return producer.Component.doProduce(inMsg,
+		func(msg Message) (interface{}, error) {
+			return newKafkaMessage(msg), nil
+		},
+		func(kafkaMsg interface{}) error {
+			return producer.writer.WriteMessages(context.Background(), kafkaMsg.(kafka.Message))
+		})
 }
 
 func (producer KafkaProducer) start() error {

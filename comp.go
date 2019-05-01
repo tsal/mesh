@@ -24,24 +24,24 @@ func newComponent(model Model) Component {
 		Metrics:   newMetrics(model.ID)}
 }
 
-// Throttles by waiting if needed only if Limiter is set
-func (c Component) throttle() {
-	if c.Limiter != nil {
-		c.Limiter.Take()
+// if Limiter is set -> throttle by waiting if needed
+func (comp Component) throttle() {
+	if comp.Limiter != nil {
+		comp.Limiter.Take()
 	}
 }
 
 // Filters message, true means accepted
-func (c Component) accept(msg Message) (bool, error) {
-	if c.Filter == "" {
+func (comp Component) accept(msg Message) (bool, error) {
+	if comp.Filter == "" {
 		return true, nil
 	}
 	return true, nil
 }
 
 // Processes message
-func (c Component) process(msg Message) (Message, error) {
-	if c.Processor == "" {
+func (comp Component) process(msg Message) (Message, error) {
+	if comp.Processor == "" {
 		return msg, nil
 	}
 	return msg, nil
@@ -63,6 +63,7 @@ func (comp Component) doConsume(node *CNode, f1 func() (Message, error), f2 func
 	accepted, err := comp.accept(msgIn)
 	if err != nil {
 		log.Error(err)
+		comp.Metrics.ErrCnt.Inc()
 	}
 	if accepted {
 		size := float64(msgIn.Size())
@@ -70,6 +71,8 @@ func (comp Component) doConsume(node *CNode, f1 func() (Message, error), f2 func
 		msgOut, err := comp.process(msgIn)
 		if err != nil {
 			log.Error(err)
+			comp.Metrics.ErrCnt.Inc()
+			return
 		}
 		go func() {
 			err = node.consume(msgOut)
@@ -81,10 +84,12 @@ func (comp Component) doConsume(node *CNode, f1 func() (Message, error), f2 func
 	}
 }
 
-func (comp Component) doProduce(msgIn Message, f1 func(Message) (interface{}, error), f2 func(rq interface{}) error) error {
+func (comp Component) doProduce(msgIn Message, f1 func(Message) (interface{}, error), f2 func(interface{}) error) error {
 	comp.throttle()
 	accepted, err := comp.accept(msgIn)
 	if err != nil {
+		log.Error(err)
+		comp.Metrics.ErrCnt.Inc()
 		return err
 	}
 	if accepted {
@@ -93,10 +98,13 @@ func (comp Component) doProduce(msgIn Message, f1 func(Message) (interface{}, er
 		comp.Metrics.MsgSize.Observe(size)
 		msgOut, err := comp.process(msgIn)
 		if err != nil {
+			log.Error(err)
+			comp.Metrics.ErrCnt.Inc()
 			return err
 		}
 		rq, err := f1(msgOut)
 		if err != nil {
+			log.Error(err)
 			comp.Metrics.ErrCnt.Inc()
 			return err
 		}

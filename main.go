@@ -61,15 +61,16 @@ type PNode struct {
 func (cnode CNode) consume(msg Message) error {
 	for _, pnode := range cnode.Producers {
 		go func(p Producer) {
-			metrics.MsgSize.Observe(float64(len(msg.Data)))
-			metrics.BytesIn.Observe(float64(len(msg.Data)))
+			size := float64(msg.Size())
+			metrics.MsgSize.Observe(size)
+			metrics.BytesIn.Observe(size)
 			err := p.produce(msg)
 			if err != nil {
 				log.Error(err)
 				metrics.ErrCnt.Inc()
 			}
 			metrics.MsgCnt.Inc()
-			metrics.BytesOut.Observe(float64(len(msg.Data)))
+			metrics.BytesOut.Observe(size)
 		}(pnode.producer)
 	}
 	return nil

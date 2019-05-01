@@ -51,7 +51,6 @@ func newMqttConsumer(model Model, node *CNode) (Consumer, error) {
 func (consumer MqttConsumer) start() error {
 	go func() {
 		log.Debug("mqtt-consumer-start")
-
 	}()
 	return nil
 }

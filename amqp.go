@@ -120,14 +120,14 @@ func (producer AmqpProducer) produce(msg Message) error {
 	log.Debug("amqp-produce", producer)
 	session, err := producer.client.NewSession()
 	if err != nil {
-		return fmt.Errorf("Creating AMQP session: %v", err)
+		return fmt.Errorf("creating AMQP session: %v", err)
 	}
 	defer session.Close(context.Background())
 	sender, err := session.NewSender(
 		amqp.LinkTargetAddress(producer.queue),
 	)
 	if err != nil {
-		return fmt.Errorf("Creating sender link: %v", err)
+		return fmt.Errorf("creating sender link: %v", err)
 	}
 	defer sender.Close(context.Background())
 	//ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -135,7 +135,7 @@ func (producer AmqpProducer) produce(msg Message) error {
 	// Send message
 	err = sender.Send(context.Background(), amqp.NewMessage(msg.Data))
 	if err != nil {
-		return fmt.Errorf("Sending message: %v", err)
+		return fmt.Errorf("sending message: %v", err)
 	}
 
 	return nil
