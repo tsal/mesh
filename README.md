@@ -3,7 +3,7 @@
 # Mesh: Meta Broker
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
-[![Build Status](https://gitlab.com/pbudzik/mesh/badges/master/pipeline.svg)](https://gitlab.com/pbudzik/mesh)
+[![Build Status](https://travis-ci.com/pbudzik/mesh.svg?token=XiaiCfPyy7FWHus4HaHR&branch=master)](https://travis-ci.com/pbudzik/mesh)
 
 ## What is it?
 

@@ -2,10 +2,10 @@ language: go
 
 go:
   - "1.12"
-  - master
 
 before_install:
   - go get
 
 script:
   - make build  
+  - go test
