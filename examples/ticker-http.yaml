@@ -3,27 +3,26 @@ consumers:
   - id: ticker1
     type: ticker
     filter: foo
-    details: 
+    details:
       interval: 100
 producers:
   - id: http1
     type: http
     rate: 1
     timeout: 2000
-    filter: func x() { return false}
+    filter: function filter() { return true}
+    processor: function process() { }
     details:
-      url: http://github.com 
+      url: http://github.com
       method: get
   - id: http2
     type: http
     rate: 2
-    filter: func x() { return false}
     details:
-      url: http://golang.org 
-      method: get    
+      url: http://golang.org
+      method: get
 mesh:
   - in: ticker1
-    out: 
-      - http1 
-      - http2 
- 
+    out:
+      - http1
+      - http2

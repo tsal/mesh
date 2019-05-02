@@ -20,8 +20,14 @@ type AmqpConsumer struct {
 }
 
 func newAmqpConsumer(model Model, node *CNode) (Consumer, error) {
-	url := model.Details["url"].(string)
-	queue := model.Details["queue"].(string)
+	url, err := getString(model, "url")
+	if err != nil {
+		return nil, err
+	}
+	queue, err := getString(model, "queue")
+	if err != nil {
+		return nil, err
+	}
 	client, err := amqp.Dial(url)
 	//amqp.ConnSASLPlain("access-key-name", "access-key"),
 	if err != nil {
@@ -40,33 +46,30 @@ func (consumer AmqpConsumer) start() error {
 		log.Debug("amqp-consumer-start")
 		session, err := consumer.client.NewSession()
 		if err != nil {
-			log.Error("Creating AMQP session:", err)
+			log.Error("creating amqp session:", err)
 		}
-
 		receiver, err := session.NewReceiver(
 			amqp.LinkSourceAddress("/queue-name"),
 			amqp.LinkCredit(10),
 		)
 		if err != nil {
-			log.Fatal("Creating receiver link:", err)
+			log.Fatal("creating amqp receiver:", err)
 		}
-
 		for {
-			// Receive next message
-			msg, err := receiver.Receive(context.Background())
-			if err != nil {
-				log.Fatal("Reading message from AMQP:", err)
-			}
-
-			// Accept message
-			msg.Accept()
-
-			err = consumer.Node.consume(Message{Data: msg.GetData()})
-			if err != nil {
-				log.Error(err)
-			}
+			consumer.Component.doConsume(consumer.Node,
+				func() (Message, error) {
+					// Receive next message
+					msg, err := receiver.Receive(context.Background())
+					if err != nil {
+						return Message{}, err
+					}
+					// Accept message
+					msg.Accept()
+					return Message{Data: msg.GetData()}, nil
+				},
+				func(err error) {
+				})
 		}
-
 	}()
 	return nil
 }
@@ -99,53 +102,53 @@ func newAmqpProducer(model Model) (Producer, error) {
 	if err != nil {
 		return nil, err
 	}
-	timeout, err := getInt(model, "timeout", 1000)
-	if err != nil {
-		return nil, err
-	}
-	_ = timeout
-	client, err := amqp.Dial(url)
-	//amqp.ConnSASLPlain("access-key-name", "access-key"),
-	if err != nil {
-		return nil, err
-	}
 	return AmqpProducer{
 		Component: newComponent(model),
-		client:    client,
 		url:       url,
 		queue:     queue}, nil
 }
 
 func (producer AmqpProducer) produce(msg Message) error {
-	log.Debug("amqp-produce", producer)
-	session, err := producer.client.NewSession()
-	if err != nil {
-		return fmt.Errorf("creating AMQP session: %v", err)
-	}
-	defer session.Close(context.Background())
-	sender, err := session.NewSender(
-		amqp.LinkTargetAddress(producer.queue),
-	)
-	if err != nil {
-		return fmt.Errorf("creating sender link: %v", err)
-	}
-	defer sender.Close(context.Background())
-	//ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	return producer.Component.doProduce(msg,
+		func(msg Message) (interface{}, error) {
+			return amqp.NewMessage(msg.Data), nil
+		},
+		func(amqMsg interface{}) error {
+			session, err := producer.client.NewSession()
+			if err != nil {
+				return fmt.Errorf("creating amqp session: %v", err)
+			}
+			defer session.Close(context.Background())
+			sender, err := session.NewSender(
+				amqp.LinkTargetAddress(producer.queue),
+			)
+			if err != nil {
+				return fmt.Errorf("creating sender link: %v", err)
+			}
+			defer sender.Close(context.Background())
+			//ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 
-	// Send message
-	err = sender.Send(context.Background(), amqp.NewMessage(msg.Data))
-	if err != nil {
-		return fmt.Errorf("sending message: %v", err)
-	}
-
-	return nil
+			// Send message
+			err = sender.Send(context.Background(), amqMsg.(*amqp.Message))
+			if err != nil {
+				return fmt.Errorf("sending message: %v", err)
+			}
+			return nil
+		})
 }
 
 func (producer AmqpProducer) start() error {
 	log.Debug("amqp-producer-start")
+	client, err := amqp.Dial(producer.url)
+	//amqp.ConnSASLPlain("access-key-name", "access-key"),
+	if err != nil {
+		return err
+	}
+	producer.client = client
 	return nil
 }
 
 func (producer AmqpProducer) stop() {
 	log.Debug("amqp-producer-stop")
+	producer.client.Close()
 }

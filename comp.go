@@ -1,6 +1,10 @@
 package main
 
 import (
+	"io/ioutil"
+	"strings"
+	"time"
+
 	log "github.com/sirupsen/logrus"
 	"go.uber.org/ratelimit"
 )
@@ -31,12 +35,33 @@ func (comp Component) throttle() {
 	}
 }
 
-// Filters message, true means accepted
+// handle file or inlined JS
+func getJsCode(value string) (string, error) {
+	if strings.HasSuffix(strings.ToLower(value), ".js") {
+		b, err := ioutil.ReadFile(value)
+		if err != nil {
+			return "", err
+		}
+		return string(b), nil
+	}
+	return value, nil
+}
+
+// Filters message, true means accepted, false rejected
 func (comp Component) accept(msg Message) (bool, error) {
 	if comp.Filter == "" {
 		return true, nil
 	}
-	return true, nil
+	code, err := getJsCode(comp.Filter)
+	if err != nil {
+		return false, err
+	}
+	log.Debugf("code: %v", code)
+	t0 := time.Now()
+	accepted, err := evalFilter("filter_"+comp.ID, code, msg)
+	metrics.JsTime.Observe(float64(time.Since(t0)) / float64(time.Millisecond))
+	//TODO diag header
+	return accepted, err
 }
 
 // Processes message
@@ -44,7 +69,16 @@ func (comp Component) process(msg Message) (Message, error) {
 	if comp.Processor == "" {
 		return msg, nil
 	}
-	return msg, nil
+	code, err := getJsCode(comp.Processor)
+	if err != nil {
+		return Message{}, err
+	}
+	log.Debugf("code: %v", code)
+	t0 := time.Now()
+	msgOut, err := evalProcess("process_"+comp.ID, code, msg)
+	metrics.JsTime.Observe(float64(time.Since(t0)) / float64(time.Millisecond))
+	//TODO diag header
+	return msgOut, err
 }
 
 //

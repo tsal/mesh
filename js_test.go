@@ -4,12 +4,38 @@ import (
 	"testing"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/require"
 )
 
-func TestHeader(t *testing.T) {
-	msg := Message{Data: []byte("abc"), Headers: map[string][]byte{}}
-	_, err := eval("p1", "headers['x']='eeee'", msg)
+const (
+	filter1  = "function filter() { if (headers['foo']=='foo') return true; return false}"
+	process1 = "function process() { headers['foo']=='foo'; }"
+)
+
+// func TestFilter(t *testing.T) {
+// 	msg := Message{Data: []byte("abc"), Headers: map[string][]byte{"foo": []byte("foo")}}
+// 	accepted, err := evalFilter("filter", filter1, msg)
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	log.Warn("accepted ", accepted)
+// }
+
+func TestProcess(t *testing.T) {
+	msgIn := Message{Data: []byte("abc"), Headers: map[string][]byte{}}
+	msgOut, err := evalProcess("process", process1, msgIn)
 	if err != nil {
 		log.Fatal(err)
+	}
+	log.Warn("msgOut ", msgOut)
+	require := require.New(t)
+	_ = require
+	//require.Equal(map[string][]byte{"foo": []byte("foo")}, msgOut.Headers)
+}
+
+func BenchmarkFilter(b *testing.B) {
+	for n := 0; n < b.N; n++ {
+		msgIn := Message{Data: []byte("abc"), Headers: map[string][]byte{}}
+		evalProcess("process", process1, msgIn)
 	}
 }

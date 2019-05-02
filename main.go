@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/common-nighthawk/go-figure"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -90,7 +91,7 @@ func (mesh Mesh) start() error {
 		}
 	}
 	go func() {
-		log.Info("mesh web console at 80")
+		log.Info("mesh web console at :80 \n /dashboard, /metrics, /status")
 		if err := mesh.server.ListenAndServe(); err != nil {
 			if err.Error() != "http: Server closed" {
 				log.Error(err)
@@ -101,6 +102,7 @@ func (mesh Mesh) start() error {
 }
 
 func (mesh Mesh) stop() {
+	log.Infof("stopping mesh: %s", mesh.ID)
 	for _, cnode := range mesh.Consumers {
 		cnode.consumer.stop()
 	}
@@ -121,8 +123,13 @@ type Model struct {
 	Retry     int
 }
 
+type ConfigModel struct {
+	//TODO
+}
+
 type MeshModel struct {
 	Version   string
+	Config    ConfigModel
 	Consumers []Model
 	Producers []Model
 	Mesh      []Node
@@ -301,6 +308,8 @@ func newMesh(file string) (*Mesh, error) {
 		status["ID"] = mesh.ID
 		status["uptime"] = Now() - mesh.StartedAt
 		status["diag"] = fmt.Sprintf("%v", mesh)
+		status["consumers"] = len(mesh.Consumers)
+		status["producers"] = len(mesh.PNodeIdx)
 		b, err := json.Marshal(status)
 		if err != nil {
 			log.Error(err)
@@ -349,17 +358,20 @@ var metrics = newMetrics("") //global
 func main() {
 	log.SetLevel(log.DebugLevel)
 	if len(os.Args) < 2 {
-		fmt.Println("Error: provide a yaml file with mesh definition")
-		os.Exit(1)
+		fmt.Println("usage: mesh [file]")
+		return
 	}
 	file := os.Args[1]
+	fig := figure.NewFigure("Mesh", "", true)
+	fig.Print()
+	fmt.Println()
 	log.Infof("using mesh file: %s", file)
 
 	mesh, err := newMesh(file)
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Debugf("%v", mesh)
+	log.Debugf("mesh: %v", mesh)
 
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt)

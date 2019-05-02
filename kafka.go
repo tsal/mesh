@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/segmentio/kafka-go"
 	log "github.com/sirupsen/logrus"
@@ -12,22 +13,30 @@ import (
 
 type KafkaConsumer struct {
 	Component
-	Node   *CNode
-	reader *kafka.Reader
-	port   string
-	uri    string
+	Node    *CNode
+	reader  *kafka.Reader
+	port    string
+	uri     string
+	groupID string
 }
 
 func newKafkaConsumer(model Model, node *CNode) (Consumer, error) {
-	brokers := model.Details["brokers"].(string)
-	topic := model.Details["topic"].(string)
+	brokers, err := getString(model, "brokers")
+	if err != nil {
+		return nil, err
+	}
+	topic, err := getString(model, "topic")
+	if err != nil {
+		return nil, err
+	}
+	groupID, err := getString(model, "groupID", NewUUID())
+	if err != nil {
+		return nil, err
+	}
 	r := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:   strings.Split(brokers, ","),
-		Topic:     topic,
-		Partition: 0,
-		MinBytes:  10e3, // 10KB
-		MaxBytes:  10e6, // 10MB
-	})
+		Brokers: strings.Split(brokers, ","),
+		GroupID: groupID,
+		Topic:   topic})
 	consumer := &KafkaConsumer{
 		Component: newComponent(model),
 		reader:    r,
@@ -82,16 +91,11 @@ func newKafkaProducer(model Model) (Producer, error) {
 	if err != nil {
 		return nil, err
 	}
-	timeout, err := getInt(model, "timeout", 1000)
-	if err != nil {
-		return nil, err
-	}
-	_ = timeout
-
 	w := kafka.NewWriter(kafka.WriterConfig{
-		Brokers:  strings.Split(brokers, ","),
-		Topic:    topic,
-		Balancer: &kafka.LeastBytes{},
+		Brokers:      strings.Split(brokers, ","),
+		Topic:        topic,
+		WriteTimeout: time.Duration(defaultIfZero(model.Timeout, 10000)),
+		Balancer:     &kafka.LeastBytes{},
 	})
 
 	return KafkaProducer{

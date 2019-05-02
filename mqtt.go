@@ -13,19 +13,18 @@ import (
 type MqttConsumer struct {
 	Component
 	Node     *CNode
-	client   *mqtt.Client
+	client   mqtt.Client
 	url      string
 	clientID string
 	topic    string
 }
 
-func newMqttClient(url, clientID string) (*mqtt.Client, error) {
-	opts := mqtt.NewClientOptions().AddBroker(url).SetClientID(clientID)
+func newMqttClient(url string, handler mqtt.MessageHandler) (mqtt.Client, error) {
+	opts := mqtt.NewClientOptions().AddBroker(url)
 	opts.SetKeepAlive(2 * time.Second)
-	//opts.SetDefaultPublishHandler(f)
+	opts.SetDefaultPublishHandler(handler)
 	opts.SetPingTimeout(1 * time.Second)
-	client := mqtt.NewClient(opts)
-	return &client, nil
+	return mqtt.NewClient(opts), nil
 }
 
 func newMqttConsumer(model Model, node *CNode) (Consumer, error) {
@@ -37,34 +36,51 @@ func newMqttConsumer(model Model, node *CNode) (Consumer, error) {
 	if err != nil {
 		return nil, err
 	}
-	client, err := newMqttClient(url, clientID)
+	_ = clientID
+	consumer := &MqttConsumer{
+		Component: newComponent(model),
+		Node:      node}
+
+	handler := func(client mqtt.Client, msg mqtt.Message) {
+		consumer.Component.doConsume(consumer.Node,
+			func() (Message, error) {
+				return Message{Data: msg.Payload()}, nil
+			},
+			func(err error) {
+			})
+	}
+
+	client, err := newMqttClient(url, handler)
 	if err != nil {
 		return nil, err
 	}
-	consumer := &MqttConsumer{
-		Component: newComponent(model),
-		client:    client,
-		Node:      node}
+	consumer.client = client
 	return consumer, nil
 }
 
 func (consumer MqttConsumer) start() error {
 	go func() {
 		log.Debug("mqtt-consumer-start")
+		if token := consumer.client.Subscribe(consumer.topic, 0, nil); token.Wait() && token.Error() != nil {
+			log.Error(token.Error())
+		}
 	}()
 	return nil
 }
 
 func (consumer MqttConsumer) stop() {
 	log.Debug("mqtt-consumer-stop")
-
+	if token := consumer.client.Unsubscribe(consumer.topic); token.Wait() && token.Error() != nil {
+		log.Error(token.Error())
+	}
+	consumer.client.Disconnect(250)
 }
 
 // --- Producer
 
 type MqttProducer struct {
 	Component
-	client  *mqtt.Client
+	client  mqtt.Client
 	topic   string
 	timeout int
 }
@@ -76,10 +92,11 @@ func newMqttProducer(model Model) (Producer, error) {
 		return nil, err
 	}
 	clientID, err := getString(model, "clientID")
+	_ = clientID
 	if err != nil {
 		return nil, err
 	}
-	client, err := newMqttClient(url, clientID)
+	client, err := newMqttClient(url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -88,16 +105,20 @@ func newMqttProducer(model Model) (Producer, error) {
 		client:    client}, nil
 }
 
-func (producer MqttProducer) produce(msg Message) error {
-	log.Debug("mqtt-produce")
-	c := *producer.client
-	if token := c.Connect(); token.Wait() && token.Error() != nil {
-		return fmt.Errorf("%v", token.Error())
-	}
-	defer c.Disconnect(250)
-	token := c.Publish(producer.topic, 0, false, msg.Data)
-	token.Wait() //FIXME timeout
-	return nil
+func (producer MqttProducer) produce(inMsg Message) error {
+	return producer.Component.doProduce(inMsg,
+		func(msg Message) (interface{}, error) {
+			return msg.Data, nil
+		},
+		func(data interface{}) error {
+			if token := producer.client.Connect(); token.Wait() && token.Error() != nil {
+				return fmt.Errorf("%v", token.Error())
+			}
+			defer producer.client.Disconnect(250)
+			token := producer.client.Publish(producer.topic, 0, false, data)
+			token.WaitTimeout(time.Duration(defaultIfZero(producer.Timeout, 10000)))
+			return token.Error()
+		})
 }
 
 func (producer MqttProducer) start() error {
@@ -107,4 +128,5 @@ func (producer MqttProducer) start() error {
 
 func (producer MqttProducer) stop() {
 	log.Debug("mqtt-producer-stop")
+	producer.client.Disconnect(250)
 }

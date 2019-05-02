@@ -40,6 +40,18 @@
 | ------------- |:-------------:| -----:|
 |1|1|1
 
+
+| Component      | Protocol       | Notes  |
+| ------------- |:-------------| -----|
+|http|HTTP,HTTPS| |
+|kafka|Kafka| |
+|amqp|AMQP 1.0| |
+|mqtt|MQTT| |
+|http|HTTP,HTTPS| |
+|websockets|WebSockets|
+|ticker|N/A|Triggering time based events. Consumer only.| 
+|std| N/A|Consumer reads data from stdin. Producer writes to stdout.|
+
 ## Components
 
 ### HTTP
@@ -80,4 +92,4 @@ Message.Data -> Kafka Message
 
 ## Contributing
 
-There is a whole lot to do. If you want to help me, you are welcome.
+There is a whole lot to do. If you want to help me, you are welcome. Please fork the repo, create a pull request against master, and be sure tests pass. 

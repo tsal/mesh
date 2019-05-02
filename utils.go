@@ -62,7 +62,7 @@ func getBool(model Model, name string, deflt ...bool) (bool, error) {
 }
 
 func newLimiter(rate int) ratelimit.Limiter {
-	log.Warn("rate", rate)
+	log.Debugf("rate: %v", rate)
 	if rate == 0 {
 		return nil
 	}
