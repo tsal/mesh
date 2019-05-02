@@ -14,7 +14,6 @@ build_amd64:
 build_macos:
 	GOOS=darwin GOARCH=amd64 go build -o dist/macos/mesh
 
-
 build_all: build_windows build_amd64 build_arm64 build_macos
 
 clean:
