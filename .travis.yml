@@ -5,6 +5,7 @@ go:
 
 before_install:
   - go get
+  - go get github.com/stretchr/testify/require
 
 notifications:
   email: false
