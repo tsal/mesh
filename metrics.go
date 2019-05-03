@@ -44,4 +44,5 @@ func newMetrics(infix string) Metrics {
 		ErrCnt:   newCounter(prefix + "err_count"),
 		MsgCnt:   newCounter(prefix + "msg_count"),
 		JsTime:   newSummary(prefix + "js_time")}
+
 }

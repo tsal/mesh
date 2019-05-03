@@ -9,6 +9,8 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/jessevdk/go-flags"
+
 	"github.com/common-nighthawk/go-figure"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -91,7 +93,7 @@ func (mesh Mesh) start() error {
 		}
 	}
 	go func() {
-		log.Info("mesh web console at :80 \n /dashboard, /metrics, /status")
+		log.Infof("mesh web console at %s \n /dashboard, /metrics, /status", mesh.server.Addr)
 		if err := mesh.server.ListenAndServe(); err != nil {
 			if err.Error() != "http: Server closed" {
 				log.Error(err)
@@ -284,7 +286,7 @@ func findPNode(id string, mesh *Mesh) (*PNode, bool) {
 	return nil, false
 }
 
-func newMesh(file string) (*Mesh, error) {
+func newMesh(file string, port int) (*Mesh, error) {
 	b, err := ioutil.ReadFile(file)
 	if err != nil {
 		return nil, errors.Wrap(err, "mesh load")
@@ -296,7 +298,7 @@ func newMesh(file string) (*Mesh, error) {
 	}
 	log.Debugf("model: %v", model)
 	r := mux.NewRouter()
-	server := &http.Server{Addr: ":" + "80", Handler: r}
+	server := &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: r}
 	mesh := &Mesh{
 		ID:        NewUUID(),
 		StartedAt: Now(),
@@ -317,7 +319,7 @@ func newMesh(file string) (*Mesh, error) {
 		w.Write(b)
 	})
 	r.PathPrefix("/").Methods("GET").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		dashboard(w, r)
+		dashboard(mesh, w, r)
 	})
 	for _, n := range model.Mesh {
 		cnode, ok := findCNode(n.In, mesh)
@@ -356,18 +358,30 @@ func newMesh(file string) (*Mesh, error) {
 var metrics = newMetrics("") //global
 
 func main() {
-	log.SetLevel(log.DebugLevel)
-	if len(os.Args) < 2 {
-		fmt.Println("usage: mesh [file]")
-		return
+	var opts struct {
+		File string `short:"f" long:"file" description:"File with mesh definition" required:"true"`
+		Port int `short:"p" long:"port" description:"Port for web interface" default:"8080"`
 	}
-	file := os.Args[1]
+
+	_, err := flags.ParseArgs(&opts, os.Args)
+
+	if err != nil {
+		log.Error(err)
+		fmt.Println("usage: mesh [flags]")
+		fmt.Println("flags:")
+		fmt.Println("-f --file")
+		fmt.Println("-p --port")
+		os.Exit(1)
+	}
+
+	log.SetLevel(log.DebugLevel)
+ 
 	fig := figure.NewFigure("Mesh", "", true)
 	fig.Print()
 	fmt.Println()
-	log.Infof("using mesh file: %s", file)
+	log.Infof("using mesh file: %s", opts.File)
 
-	mesh, err := newMesh(file)
+	mesh, err := newMesh(opts.File, opts.Port)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -97,6 +97,7 @@ type HttpProducer struct {
 	auth          []string
 	tlsPublicKey  string
 	tlsPrivateKey string
+	proxyUrl      string
 }
 
 func newHttpProducer(model Model) (Producer, error) {

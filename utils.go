@@ -4,7 +4,10 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"net/http"
 	"reflect"
+	"strings"
 	"time"
 
 	"go.uber.org/ratelimit"
@@ -93,4 +96,23 @@ func NewUUID() string {
 	// version 4 (pseudo-random); see section 4.1.3
 	uuid[6] = uuid[6]&^0xf0 | 0x40
 	return fmt.Sprintf("%x-%x-%x-%x-%x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:])
+}
+
+func getMetrics() error {
+	r, err := http.Get("http://localhost/metrics")
+	if err != nil {
+		return err
+	}
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	var filtered []string
+	for _, line := range strings.Split(string(b), "\n") {
+		if strings.HasPrefix(line, "mesh_bytes_in_count") {
+			filtered = append(filtered, line)
+		}
+	}
+	log.Warn("!!!!! ", filtered)
+	return nil
 }

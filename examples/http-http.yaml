@@ -1,0 +1,15 @@
+version: v1
+consumers:
+  - id: http1
+    type: http
+    details:
+      port: 9111
+producers:
+  - id: http2
+    type: http
+    details:
+      url: http://golang.org
+mesh:
+  - in: http1
+    out:
+      - http2

@@ -7,7 +7,7 @@ import (
 )
 
 func TestEmpty(t *testing.T) {
-	mesh, err := newMesh("examples/empty.yaml")
+	mesh, err := newMesh("examples/empty.yaml", 80)
 	if err != nil {
 		log.Error(err)
 	}
@@ -19,7 +19,7 @@ func TestEmpty(t *testing.T) {
 }
 
 func TestTickerHttp(t *testing.T) {
-	mesh, err := newMesh("examples/ticker-http.yaml")
+	mesh, err := newMesh("examples/ticker-http.yaml", 80)
 	if err != nil {
 		log.Error(err)
 	}
