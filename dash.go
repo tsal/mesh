@@ -35,10 +35,10 @@ func dashboard(mesh *Mesh, w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	
-	log.Warn(mesh.Consumers[0].Producers)
+	log.Warnf("in dash: %v, nodes=%v", mesh, nodes)
 
-	getMetrics()
-	
+	//getMetrics()
+
 	data, err := mustache.Render(html, map[string]interface{}{
 		"mesh":   mesh,
 		"uptime": uptime,

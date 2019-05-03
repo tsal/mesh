@@ -62,7 +62,9 @@ type PNode struct {
 	producer  Producer
 }
 
-func (cnode CNode) consume(msg Message) error {
+func (cnode *CNode) consume(msg Message) error {
+	log.Warn("cnode: ", cnode)
+	log.Warn("producers: ", cnode.Producers)
 	for _, pnode := range cnode.Producers {
 		go func(p Producer) {
 			size := float64(msg.Size())
@@ -104,7 +106,7 @@ func (mesh Mesh) start() error {
 	return nil
 }
 
-func (mesh Mesh) stop() {
+func (mesh *Mesh) stop() {
 	log.Infof("stopping mesh: %s", mesh.ID)
 	for _, cnode := range mesh.Consumers {
 		cnode.consumer.stop()
@@ -145,56 +147,56 @@ type Node struct {
 
 type Mesh struct {
 	ID        string
-	PNodeIdx  map[string]*PNode
+	PNodeIdx  map[string]PNode
 	Consumers []CNode
 	server    *http.Server
 	StartedAt int64
 }
 
 func newCNode(m Model) (*CNode, error) {
-	node := &CNode{id: m.ID, Producers: []PNode{}, Filter: m.Filter}
+	node := CNode{id: m.ID, Producers: []PNode{}, Filter: m.Filter}
 	log.Debugf("creating consumer: %s", m.ID)
 	log.Debugf("\ttype: %s", m.Type)
 	log.Debugf("\tfilter: %s", m.Filter)
 	switch m.Type {
 	case "std":
-		c, err := newStdConsumer(m, node)
+		c, err := newStdConsumer(m, &node)
 		if err != nil {
 			return nil, err
 		}
 		node.consumer = c
 	case "ticker":
-		c, err := newTickerConsumer(m, node)
+		c, err := newTickerConsumer(m, &node)
 		if err != nil {
 			return nil, err
 		}
 		node.consumer = c
 	case "http":
-		c, err := newHttpConsumer(m, node)
+		c, err := newHttpConsumer(m, &node)
 		if err != nil {
 			return nil, err
 		}
 		node.consumer = c
 	case "kafka":
-		c, err := newKafkaConsumer(m, node)
+		c, err := newKafkaConsumer(m, &node)
 		if err != nil {
 			return nil, err
 		}
 		node.consumer = c
 	case "amqp":
-		c, err := newAmqpConsumer(m, node)
+		c, err := newAmqpConsumer(m, &node)
 		if err != nil {
 			return nil, err
 		}
 		node.consumer = c
 	case "mqtt":
-		c, err := newMqttConsumer(m, node)
+		c, err := newMqttConsumer(m, &node)
 		if err != nil {
 			return nil, err
 		}
 		node.consumer = c
 	case "ws":
-		c, err := newWsConsumer(m, node)
+		c, err := newWsConsumer(m, &node)
 		if err != nil {
 			return nil, err
 		}
@@ -202,11 +204,11 @@ func newCNode(m Model) (*CNode, error) {
 	default:
 		return nil, fmt.Errorf("unsupported consumer type: %s", m.Type)
 	}
-	return node, nil
+	return &node, nil
 }
 
 func newPNode(m Model) (*PNode, error) {
-	node := &PNode{id: m.ID, Filter: m.Filter}
+	node := PNode{id: m.ID, Filter: m.Filter}
 	log.Debugf("creating producer: %s", m.ID)
 	log.Debugf("\ttype: %s", m.Type)
 	log.Debugf("\tfilter: %s", m.Filter)
@@ -250,7 +252,7 @@ func newPNode(m Model) (*PNode, error) {
 	default:
 		return nil, fmt.Errorf("unsupported producer type: %s", m.Type)
 	}
-	return node, nil
+	return &node, nil
 }
 
 func findModel(id string, model MeshModel) (Model, error) {
@@ -299,18 +301,17 @@ func newMesh(file string, port int) (*Mesh, error) {
 	}
 	log.Debugf("model: %v", model)
 	r := mux.NewRouter()
-	server := &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: r}
-	mesh := &Mesh{
+	server := http.Server{Addr: fmt.Sprintf(":%d", port), Handler: r}
+	mesh := Mesh{
 		ID:        NewUUID(),
 		StartedAt: Now(),
-		PNodeIdx:  make(map[string]*PNode),
-		server:    server}
+		PNodeIdx:  make(map[string]PNode),
+		server:    &server}
 	r.PathPrefix("/metrics").Methods("GET").Handler(promhttp.Handler())
 	r.PathPrefix("/status").Methods("GET").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		status := map[string]interface{}{}
 		status["ID"] = mesh.ID
 		status["uptime"] = Now() - mesh.StartedAt
-		status["diag"] = fmt.Sprintf("%v", mesh)
 		status["consumers"] = len(mesh.Consumers)
 		status["producers"] = len(mesh.PNodeIdx)
 		b, err := json.Marshal(status)
@@ -320,10 +321,10 @@ func newMesh(file string, port int) (*Mesh, error) {
 		w.Write(b)
 	})
 	r.PathPrefix("/").Methods("GET").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		dashboard(mesh, w, r)
+		dashboard(&mesh, w, r)
 	})
 	for _, n := range model.Mesh {
-		cnode, ok := findCNode(n.In, mesh)
+		cnode, ok := findCNode(n.In, &mesh)
 		if !ok {
 			m, err := findModel(n.In, model)
 			if err != nil {
@@ -337,7 +338,7 @@ func newMesh(file string, port int) (*Mesh, error) {
 		}
 		mesh.Consumers = append(mesh.Consumers, *cnode)
 		for _, id := range n.Out {
-			pnode, ok := findPNode(id, mesh)
+			pnode, ok := findPNode(id, &mesh)
 			if !ok {
 				m, err := findModel(id, model)
 				if err != nil {
@@ -348,12 +349,13 @@ func newMesh(file string, port int) (*Mesh, error) {
 					return nil, fmt.Errorf("couldn't create producer: %v, err: %v", m, err)
 				}
 				pnode = p
-				mesh.PNodeIdx[id] = p
+				mesh.PNodeIdx[id] = *p
 			}
 			cnode.Producers = append(cnode.Producers, *pnode)
 		}
 	}
-	return mesh, nil
+	log.Debugf("!mesh.P: %v", mesh.Consumers[0].Producers)
+	return &mesh, nil
 }
 
 var metrics = newMetrics("") //global
@@ -395,6 +397,7 @@ func main() {
 		log.Fatal(err)
 	}
 	log.Debugf("mesh: %v", mesh)
+	log.Debugf("mesh.P: %v", mesh.Consumers[0].Producers)
 
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt)
