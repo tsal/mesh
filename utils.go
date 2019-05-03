@@ -113,6 +113,6 @@ func getMetrics() error {
 			filtered = append(filtered, line)
 		}
 	}
-	log.Warn("!!!!! ", filtered)
+	log.Debug("!!!!! ", filtered)
 	return nil
 }

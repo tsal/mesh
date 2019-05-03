@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/dop251/goja"
@@ -26,12 +28,31 @@ func setVars(vm *goja.Runtime, msg Message) {
 var programsCache = map[string]*goja.Program{}
 var programsMx = sync.RWMutex{}
 
+func precompile(code string) error {
+	t := strings.Split(code, ";")
+	code = strings.Join(t[:len(t)-2], ";")
+	if !(strings.Contains(code, "process()") ||
+		strings.Contains(code, "filter()")) {
+		return fmt.Errorf("handler contains neither filter() nor process()")
+	}
+	if strings.Contains(code, "filter()") && !strings.Contains(code, "return") {
+		return fmt.Errorf("handler contains filter(), but there is not return statement")
+	}
+	return nil
+}
+
 func getProgram(id string, code string) (*goja.Program, error) {
 	programsMx.RLock()
 	if p, ok := programsCache[id]; ok {
 		return p, nil
 	}
 	programsMx.RUnlock()
+
+	err := precompile(code)
+	if err != nil {
+		return nil, err
+	}
+
 	p, err := goja.Compile(id, code, false)
 	if err != nil {
 		return nil, err
@@ -46,8 +67,8 @@ func evalFilter(id string, code string, msg Message) (bool, error) {
 	vm := vmPool.Get().(*goja.Runtime)
 	defer vmPool.Put(vm)
 	setVars(vm, msg)
-	code += " ; _result=filter();"
-	log.Warn(code)
+	code += ";_result=filter();"
+	log.Debug(code)
 	program, err := getProgram(id, code)
 	if err != nil {
 		return false, errors.Wrapf(err, "js compile: |%s|", code)
@@ -57,7 +78,7 @@ func evalFilter(id string, code string, msg Message) (bool, error) {
 		return false, errors.Wrap(err, "js run")
 	}
 	result := vm.Get("_result")
-	log.Warnf("result: %v", result)
+	log.Debugf("result: %v", result)
 	return result.ToBoolean(), nil
 }
 
@@ -65,7 +86,7 @@ func evalProcess(id string, code string, msg Message) (Message, error) {
 	vm := vmPool.Get().(*goja.Runtime)
 	defer vmPool.Put(vm)
 	setVars(vm, msg)
-	code += " ; process();"
+	code += ";process();"
 	program, err := getProgram(id, code)
 	if err != nil {
 		return Message{}, errors.Wrapf(err, "js compile: |%s|", code)
@@ -74,12 +95,11 @@ func evalProcess(id string, code string, msg Message) (Message, error) {
 	if err != nil {
 		return Message{}, errors.Wrap(err, "js run")
 	}
-	v1 := vm.Get("body")
-	v2 := vm.Get("headers")
-	//log.Warnf("v1:=%v v2=%v exp1=%v exp2=%v", v1, v2, v1.Export(), v2.Export())
+	jsBody := vm.Get("body")
+	jsHdrs := vm.Get("headers")
 	//TODO type checks to avoid panic!!!
-	data := v1.Export().(string)
-	hdrs := v2.Export().(map[string]string)
+	data := jsBody.Export().(string)
+	hdrs := jsHdrs.Export().(map[string]string)
 	headers := map[string][]byte{}
 	for k, v := range hdrs {
 		headers[k] = []byte(v)

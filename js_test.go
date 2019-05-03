@@ -8,18 +8,20 @@ import (
 )
 
 const (
-	filter1  = "function filter() { if (headers['foo']=='foo') return true; return false}"
-	process1 = "function process() { headers['foo']=='foo'; }"
+	filter1  = "function filter() { if (headers['foo']=='foo') {return true} else { return false } }"
+	process1 = "function process() { headers['foo']='foo'; }"
 )
 
-// func TestFilter(t *testing.T) {
-// 	msg := Message{Data: []byte("abc"), Headers: map[string][]byte{"foo": []byte("foo")}}
-// 	accepted, err := evalFilter("filter", filter1, msg)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	log.Warn("accepted ", accepted)
-// }
+func TestFilter(t *testing.T) {
+	msg := Message{Data: []byte("abc"), Headers: map[string][]byte{"foo": []byte("foo")}}
+	accepted, err := evalFilter("filter", filter1, msg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Debug("accepted ", accepted)
+	require := require.New(t)
+	require.True(accepted)
+}
 
 func TestProcess(t *testing.T) {
 	msgIn := Message{Data: []byte("abc"), Headers: map[string][]byte{}}
@@ -27,10 +29,9 @@ func TestProcess(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Warn("msgOut ", msgOut)
+	log.Debug("msgOut ", msgOut)
 	require := require.New(t)
-	_ = require
-	//require.Equal(map[string][]byte{"foo": []byte("foo")}, msgOut.Headers)
+	require.Equal(map[string][]byte{"foo": []byte("foo")}, msgOut.Headers)
 }
 
 func BenchmarkFilter(b *testing.B) {
