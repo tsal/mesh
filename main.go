@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 
 	"github.com/jessevdk/go-flags"
 
@@ -359,8 +360,9 @@ var metrics = newMetrics("") //global
 
 func main() {
 	var opts struct {
-		File string `short:"f" long:"file" description:"File with mesh definition" required:"true"`
-		Port int `short:"p" long:"port" description:"Port for web interface" default:"8080"`
+		File     string `short:"f" long:"file" description:"File with mesh definition" required:"true"`
+		Port     int    `short:"p" long:"port" description:"Port for web interface" default:"8080"`
+		LogLevel string `short:"l" long:"loglevel" description:"Logging level" choice:"info" choice:"debug" choice:"cat" choice:"warn" default:"info"`
 	}
 
 	_, err := flags.ParseArgs(&opts, os.Args)
@@ -374,8 +376,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	log.SetLevel(log.DebugLevel)
- 
+	switch strings.ToLower(opts.LogLevel) {
+	case "debug":
+		log.SetLevel(log.DebugLevel)
+	case "info":
+		log.SetLevel(log.InfoLevel)
+	case "warn":
+		log.SetLevel(log.WarnLevel)
+	}
+
 	fig := figure.NewFigure("Mesh", "", true)
 	fig.Print()
 	fmt.Println()
@@ -396,7 +405,6 @@ func main() {
 		}
 	}()
 
-	//panic("")
 	log.Infof("%d consumer(s), %d producer(s) registered", len(mesh.Consumers), len(mesh.PNodeIdx))
 	mesh.start()
 
