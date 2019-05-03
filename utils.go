@@ -12,6 +12,7 @@ import (
 
 	"go.uber.org/ratelimit"
 
+	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -115,4 +116,9 @@ func getMetrics() error {
 	}
 	log.Debug("!!!!! ", filtered)
 	return nil
+}
+
+func dump(a ...interface{}) {
+	scs := spew.ConfigState{MaxDepth: 3, Indent: "\t"}
+	scs.Dump(a)
 }

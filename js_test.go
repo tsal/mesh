@@ -44,3 +44,4 @@ func BenchmarkFilter(b *testing.B) {
 		evalProcess("process", process1, msgIn)
 	}
 }
+

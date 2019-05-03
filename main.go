@@ -48,7 +48,7 @@ type Producer interface {
 }
 
 type CNode struct {
-	id        string
+	ID        string
 	Filter    string
 	Processor string
 	consumer  Consumer
@@ -82,7 +82,7 @@ func (cnode *CNode) consume(msg Message) error {
 	return nil
 }
 
-func (mesh Mesh) start() error {
+func (mesh *Mesh) start() error {
 	for _, pnode := range mesh.PNodeIdx {
 		err := pnode.producer.start()
 		if err != nil {
@@ -90,6 +90,7 @@ func (mesh Mesh) start() error {
 		}
 	}
 	for _, cnode := range mesh.Consumers {
+		log.Warnf("!!!!!!!!!!! %v", cnode)
 		err := cnode.consumer.start()
 		if err != nil {
 			return err
@@ -128,13 +129,8 @@ type Model struct {
 	Retry     int
 }
 
-type ConfigModel struct {
-	//TODO
-}
-
 type MeshModel struct {
 	Version   string
-	Config    ConfigModel
 	Consumers []Model
 	Producers []Model
 	Mesh      []Node
@@ -148,13 +144,13 @@ type Node struct {
 type Mesh struct {
 	ID        string
 	PNodeIdx  map[string]PNode
-	Consumers []CNode
+	Consumers []*CNode
 	server    *http.Server
 	StartedAt int64
 }
 
 func newCNode(m Model) (*CNode, error) {
-	node := CNode{id: m.ID, Producers: []PNode{}, Filter: m.Filter}
+	node := CNode{ID: m.ID, Producers: []PNode{}, Filter: m.Filter}
 	log.Debugf("creating consumer: %s", m.ID)
 	log.Debugf("\ttype: %s", m.Type)
 	log.Debugf("\tfilter: %s", m.Filter)
@@ -271,8 +267,8 @@ func findModel(id string, model MeshModel) (Model, error) {
 
 func findCNode(id string, mesh *Mesh) (*CNode, bool) {
 	for _, c := range mesh.Consumers {
-		if c.id == id {
-			return &c, true
+		if c.ID == id {
+			return c, true
 		}
 	}
 	return nil, false
@@ -290,12 +286,12 @@ func findPNode(id string, mesh *Mesh) (*PNode, bool) {
 }
 
 func newMesh(file string, port int) (*Mesh, error) {
-	b, err := ioutil.ReadFile(file)
+	data, err := ioutil.ReadFile(file)
 	if err != nil {
 		return nil, errors.Wrap(err, "mesh load")
 	}
 	model := MeshModel{}
-	err = yaml.Unmarshal([]byte(b), &model)
+	err = yaml.Unmarshal([]byte(data), &model)
 	if err != nil {
 		return nil, errors.Wrap(err, "mesh unmarshal")
 	}
@@ -323,6 +319,7 @@ func newMesh(file string, port int) (*Mesh, error) {
 	r.PathPrefix("/").Methods("GET").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		dashboard(&mesh, w, r)
 	})
+	//TODO extract
 	for _, n := range model.Mesh {
 		cnode, ok := findCNode(n.In, &mesh)
 		if !ok {
@@ -335,8 +332,8 @@ func newMesh(file string, port int) (*Mesh, error) {
 				return nil, fmt.Errorf("couldn't create consumer: %v", m)
 			}
 			cnode = c
+			mesh.Consumers = append(mesh.Consumers, c)
 		}
-		mesh.Consumers = append(mesh.Consumers, *cnode)
 		for _, id := range n.Out {
 			pnode, ok := findPNode(id, &mesh)
 			if !ok {
@@ -352,9 +349,11 @@ func newMesh(file string, port int) (*Mesh, error) {
 				mesh.PNodeIdx[id] = *p
 			}
 			cnode.Producers = append(cnode.Producers, *pnode)
+
+			println("-1")
+			println(cnode)
 		}
 	}
-	log.Debugf("!mesh.P: %v", mesh.Consumers[0].Producers)
 	return &mesh, nil
 }
 
@@ -397,7 +396,6 @@ func main() {
 		log.Fatal(err)
 	}
 	log.Debugf("mesh: %v", mesh)
-	log.Debugf("mesh.P: %v", mesh.Consumers[0].Producers)
 
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt)

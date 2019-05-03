@@ -29,7 +29,7 @@ func newComponent(model Model) Component {
 }
 
 // if Limiter is set -> throttle by waiting if needed
-func (comp Component) throttle() {
+func (comp *Component) throttle() {
 	if comp.Limiter != nil {
 		comp.Limiter.Take()
 	}
@@ -86,7 +86,7 @@ func (comp Component) process(msg Message) (Message, error) {
 //
 //
 
-func (comp Component) doConsume(node *CNode, f1 func() (Message, error), f2 func(error)) {
+func (comp *Component) doConsume(node *CNode, f1 func() (Message, error), f2 func(error)) {
 	comp.throttle()
 	msgIn, err := f1()
 	if err != nil {
@@ -118,7 +118,7 @@ func (comp Component) doConsume(node *CNode, f1 func() (Message, error), f2 func
 	}
 }
 
-func (comp Component) doProduce(msgIn Message, f1 func(Message) (interface{}, error), f2 func(interface{}) error) error {
+func (comp *Component) doProduce(msgIn Message, f1 func(Message) (interface{}, error), f2 func(interface{}) error) error {
 	comp.throttle()
 	accepted, err := comp.accept(msgIn)
 	if err != nil {

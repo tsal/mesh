@@ -29,13 +29,14 @@ func dashboard(mesh *Mesh, w http.ResponseWriter, r *http.Request) {
 	var nodes []node
 
 	for _, c := range mesh.Consumers {
-		nodes = append(nodes, node{c.id})
+		nodes = append(nodes, node{c.ID})
+		println(&c)
 		for _, p := range c.Producers {
 			nodes = append(nodes, node{p.id})
 		}
 	}
-	
-	log.Warnf("in dash: %v, nodes=%v", mesh, nodes)
+
+	log.Warnf("nodes=%v",    nodes)
 
 	//getMetrics()
 
@@ -69,9 +70,9 @@ var html = `
 
   <h2> Mesh: {{mesh.ID}}</h2>
 
-  {{nodes}}
-  		{{name}}
-  {{nodes}}
+  {{#nodes}}
+  		 {{node.name}}
+  {{/nodes}}
 
   <p>
   <a href="/status">Status</a> | 
