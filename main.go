@@ -56,15 +56,13 @@ type CNode struct {
 }
 
 type PNode struct {
-	id        string
+	ID        string
 	Filter    string
 	Processor string
 	producer  Producer
 }
 
 func (cnode *CNode) consume(msg Message) error {
-	log.Warn("cnode: ", cnode)
-	log.Warn("producers: ", cnode.Producers)
 	for _, pnode := range cnode.Producers {
 		go func(p Producer) {
 			size := float64(msg.Size())
@@ -90,7 +88,6 @@ func (mesh *Mesh) start() error {
 		}
 	}
 	for _, cnode := range mesh.Consumers {
-		log.Warnf("!!!!!!!!!!! %v", cnode)
 		err := cnode.consumer.start()
 		if err != nil {
 			return err
@@ -204,7 +201,7 @@ func newCNode(m Model) (*CNode, error) {
 }
 
 func newPNode(m Model) (*PNode, error) {
-	node := PNode{id: m.ID, Filter: m.Filter}
+	node := PNode{ID: m.ID, Filter: m.Filter}
 	log.Debugf("creating producer: %s", m.ID)
 	log.Debugf("\ttype: %s", m.Type)
 	log.Debugf("\tfilter: %s", m.Filter)
@@ -277,7 +274,7 @@ func findCNode(id string, mesh *Mesh) (*CNode, bool) {
 func findPNode(id string, mesh *Mesh) (*PNode, bool) {
 	for _, c := range mesh.Consumers {
 		for _, p := range c.Producers {
-			if p.id == id {
+			if p.ID == id {
 				return &p, true
 			}
 		}
@@ -317,7 +314,7 @@ func newMesh(file string, port int) (*Mesh, error) {
 		w.Write(b)
 	})
 	r.PathPrefix("/").Methods("GET").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		dashboard(&mesh, w, r)
+		dashboard(&mesh, model, w, r)
 	})
 	//TODO extract
 	for _, n := range model.Mesh {
@@ -349,9 +346,6 @@ func newMesh(file string, port int) (*Mesh, error) {
 				mesh.PNodeIdx[id] = *p
 			}
 			cnode.Producers = append(cnode.Producers, *pnode)
-
-			println("-1")
-			println(cnode)
 		}
 	}
 	return &mesh, nil

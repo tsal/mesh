@@ -71,7 +71,7 @@ func newHttpConsumer(model Model, node *CNode) (Consumer, error) {
 func (consumer HttpConsumer) start() error {
 	go func() {
 		log.Debug("http-consumer-start")
-		log.Infof("listening: port=%s, uri=%s, method=%s", consumer.port, consumer.uri, consumer.method)
+		log.Infof("%s: listening: port=%s, uri=%s, method=%s", consumer.ID, consumer.port, consumer.uri, consumer.method)
 		if err := consumer.server.ListenAndServe(); err != nil {
 			if err.Error() != "http: Server closed" {
 				log.Error(err)

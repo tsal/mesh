@@ -16,6 +16,8 @@ build_macos:
 
 build_all: build_windows build_amd64 build_arm64 build_macos
 
+dist: build_all
+
 clean:
 	rm ./dist
 

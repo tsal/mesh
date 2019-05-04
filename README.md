@@ -1,4 +1,4 @@
-![](/Users/przemek/Downloads/connection-icon-19.jpg)
+![Mesh](resources/mesh_icon.jpg)
 
 # Mesh: Meta Broker
 
@@ -51,6 +51,8 @@
 |websockets|WebSockets|
 |ticker|N/A|Triggering time based events. Consumer only.| 
 |std| N/A|Consumer reads data from stdin. Producer writes to stdout.|
+
+![](resources/mesh1.png){:height="36px" width="36px"}
 
 ## Components
 

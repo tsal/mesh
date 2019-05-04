@@ -2,10 +2,12 @@ package main
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/cbroglie/mustache"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -13,9 +15,25 @@ const (
 	defaultPass = "admin"
 )
 
-func dashboard(mesh *Mesh, w http.ResponseWriter, r *http.Request) {
+type node struct {
+	Name string
+	Desc string
+}
+
+type edge struct {
+	Start string
+	End   string
+}
+
+func getDesc(model Model) string {
+	//fmt.Sprintf("%v", cm.Details)
+	b, _ := yaml.Marshal(model.Details)
+	return strings.ReplaceAll(string(b), "\n", "\\n")
+}
+
+func dashboard(mesh *Mesh, model MeshModel, w http.ResponseWriter, r *http.Request) {
 	user, pass, _ := r.BasicAuth()
-	if !(user == defaultUser && pass == defaultPass) {
+	if !(user == GetenvOr("MESH_USER", defaultUser) && pass == GetenvOr("MESH_PASSWORD", defaultPass)) {
 		w.Header().Set("WWW-Authenticate", `Basic realm="Mesh"`)
 		w.WriteHeader(401)
 		w.Write([]byte("401 Unauthorized\n"))
@@ -23,27 +41,31 @@ func dashboard(mesh *Mesh, w http.ResponseWriter, r *http.Request) {
 	}
 	uptime := time.Duration(Now() - mesh.StartedAt)
 
-	type node struct {
-		name string
-	}
 	var nodes []node
+	var edges []edge
 
 	for _, c := range mesh.Consumers {
-		nodes = append(nodes, node{c.ID})
-		println(&c)
+		cm, _ := findModel(c.ID, model)
+		nodes = append(nodes, node{c.ID, getDesc(cm)})
 		for _, p := range c.Producers {
-			nodes = append(nodes, node{p.id})
+			pm, _ := findModel(p.ID, model)
+			nodes = append(nodes, node{p.ID, getDesc(pm)})
+			edges = append(edges, edge{c.ID, p.ID})
 		}
 	}
 
-	log.Warnf("nodes=%v",    nodes)
-
-	//getMetrics()
+	report, err := getMetrics(mesh)
+	if err != nil {
+		log.Error(err)
+	}
 
 	data, err := mustache.Render(html, map[string]interface{}{
 		"mesh":   mesh,
 		"uptime": uptime,
-		"nodes":  nodes})
+		"nodes":  nodes,
+		"edges":  edges,
+		"report": report})
+
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 	}
@@ -70,10 +92,6 @@ var html = `
 
   <h2> Mesh: {{mesh.ID}}</h2>
 
-  {{#nodes}}
-  		 {{node.name}}
-  {{/nodes}}
-
   <p>
   <a href="/status">Status</a> | 
   <a href="/metrics">Metrics</a>
@@ -81,23 +99,25 @@ var html = `
 
 <div id="mynetwork"></div>
 
+{{report}}
+
 <script type="text/javascript">
   // create an array with nodes
   var nodes = new vis.DataSet([
-    {id: 1, label: 'Node 1'},
-    {id: 2, label: 'Node 2'},
-    {id: 3, label: 'Node 3'},
-    {id: 4, label: 'Node 4'},
-    {id: 5, label: 'Node 5'}
+
+  {{#nodes}}
+		{id: '{{Name}}', label: 'ID:{{Name}} \n {{Desc}}', font: { multi: 'html', size: 10 }},
+  {{/nodes}}
+
   ]);
 
   // create an array with edges
   var edges = new vis.DataSet([
-    {from: 1, to: 3},
-    {from: 1, to: 2},
-    {from: 2, to: 4},
-    {from: 2, to: 5},
-    {from: 3, to: 3}
+	
+	{{#edges}}
+	{from: '{{Start}}', to: '{{End}}', arrows:'to'},
+	{{/edges}}
+	
   ]);
 
   // create a network

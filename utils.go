@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"reflect"
 	"strings"
 	"time"
@@ -99,26 +100,37 @@ func NewUUID() string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:])
 }
 
-func getMetrics() error {
-	r, err := http.Get("http://localhost/metrics")
+func getMetrics(mesh *Mesh) (string, error) {
+	r, err := http.Get("http://localhost" + mesh.server.Addr + "/metrics")
 	if err != nil {
-		return err
+		return "", err
 	}
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		return err
+		return "", err
 	}
-	var filtered []string
+	var errCnt string
+	var msgCnt string
 	for _, line := range strings.Split(string(b), "\n") {
-		if strings.HasPrefix(line, "mesh_bytes_in_count") {
-			filtered = append(filtered, line)
+		if strings.HasPrefix(line, "mesh_err_count") {
+			errCnt = strings.Split(line, " ")[1]
+		}
+		if strings.HasPrefix(line, "mesh_msg_count") {
+			msgCnt = strings.Split(line, " ")[1]
 		}
 	}
-	log.Debug("!!!!! ", filtered)
-	return nil
+	return fmt.Sprintf("Messages processed: %s, Errors: %s", msgCnt, errCnt), nil
 }
 
 func dump(a ...interface{}) {
 	scs := spew.ConfigState{MaxDepth: 3, Indent: "\t"}
 	scs.Dump(a)
+}
+
+func GetenvOr(key string, deflt string) string {
+	val := os.Getenv(key)
+	if val == "" {
+		return deflt
+	}
+	return val
 }
