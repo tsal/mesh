@@ -1,4 +1,4 @@
-<img src="resources/logo.png width="100">
+![Mesh](resources/logo_sm.png)
 
 # Mesh: Meta Broker
 
