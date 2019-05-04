@@ -62,9 +62,9 @@ Sample HTTP->Kafka mesh:
 version: v1
 consumers:
   - id: foo #creates a listener at 8081/foo
-    type: http
+    type: http # component type
     rate: 1 # throttling at 1 TPS 
-    details:
+    details: #details of underlying protocol
       port: 8081
       uri: /foo
 producers:
@@ -72,11 +72,11 @@ producers:
     type: kafka
     timeout: 1000 # 1 second
     details:
-      brokers: 0.0.0.0:9092
-      topic: my_topic
-mesh:
-  - in: foo
-    out:
+      brokers: 0.0.0.0:9092 #comma separated list
+      topic: my_topic #topic to write to
+mesh: # actual mesh, consumers/producers referenced by id's
+  - in: foo # consumer 
+    out: # producers
       - bar
 ```
 Sample Kafka->MQTT mesh with JS handlers
@@ -88,15 +88,15 @@ consumers:
     type: kafka
     details:
       brokers: 0.0.0.0:9092 #comma separated list
-      topic: my_topic #topic to subscribe
+      topic: my_topic # topic to subscribe
 producers:
   - id: mqtt1
     type: mqtt
-    filter: function filter() {if (headers['foo']=='bar') {return true} else {return false}}
-    process: function process() { headers['baz']='I was here'; }
+    filter: function filter() {if (headers['foo']=='bar') {return true} else {return false}} # inline JS or file name
+    process: function process() { headers['baz']='I was here'; } # body and headers are global in scope of transaction
     details:
       url: tcp://localhost:1883
-      topic: my_topic
+      topic: my_topic # topic to write to
 mesh:
   - in: kafka1
     out:
@@ -107,13 +107,13 @@ mesh:
 
 http://localhost:8080
 
-### Metrics
-
-http://localhost:8080/metrics
-
 Sample screenshot:
 
 ![](resources/mesh2.png) 
+
+### Metrics
+
+Prometheus metrics can be seen/scraped from: http://localhost:8080/metrics
 
 ## Design
 
@@ -127,7 +127,10 @@ Abstraction of a cross-protocol event. Consists of:
 ### Consumers and producers
 
 Consumer - component that receives events from external source and hands them off to producers
+
 Producer - component that receives events from consumers and produces external events
+
+Event (aka Message) can be sent to multiple producers. The send is parallel and async.
 
 ### Mesh
 
@@ -139,6 +142,8 @@ Both consumers and producers can be extended by two handlers (Javascript functio
 
 1. Filter - filter() -> boolean, result can determine if an event should be processed or dropped.
 2. Process - process(), message can be altered (addition, decoration etc) prior to the actual processing.
+
+Definition can be provided as inlined JS or as a reference to file.
 
 ## Components
 
