@@ -1,4 +1,4 @@
-![Mesh](resources/mesh_icon.jpg)
+<img src="https://github.com/pbudzik/mesh/blob/master/resources/logo.png width="100">
 
 # Mesh: Meta Broker
 
@@ -52,7 +52,7 @@
 |ticker|N/A|Triggering time based events. Consumer only.| 
 |std| N/A|Consumer reads data from stdin. Producer writes to stdout.|
 
-![](resources/mesh1.png){:height="36px" width="36px"}
+![](resources/mesh2.png) 
 
 ## Components
 
